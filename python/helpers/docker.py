@@ -6,6 +6,7 @@ from python.helpers.files import get_abs_path
 from python.helpers.errors import format_error
 from python.helpers.print_style import PrintStyle
 from python.helpers.log import Log
+import os
 
 class DockerContainerManager:
     def __init__(self, logger: Log, image: str, name: str, ports: Optional[dict[str, int]] = None, volumes: Optional[dict[str, dict[str, str]]] = None):
@@ -15,7 +16,7 @@ class DockerContainerManager:
         self.ports = ports
         self.volumes = volumes
         self.init_docker()
-                
+
     def init_docker(self):
         self.client = None
         while not self.client:
@@ -32,7 +33,25 @@ class DockerContainerManager:
                     time.sleep(5) # try again in 5 seconds
                 else: raise
         return self.client
-                            
+    def copy_to_container(self, src: str, dst: str) -> None:
+        if not self.client:
+            self.client = self.init_docker()
+        client = docker.from_env()
+        import tarfile
+        import io
+        container = client.containers.get(self.name)
+        srcname = os.path.basename(src)
+        try:
+            obj_stream = io.BytesIO()
+            with tarfile.open(fileobj=obj_stream, mode='w|') as tmp_tar, open(src, 'rb') as tmp_file:
+                obj_info = tmp_tar.gettarinfo(fileobj=tmp_file)
+                obj_info.name = os.path.basename(src)
+                tmp_tar.addfile(obj_info, tmp_file)
+            container.put_archive(os.path.dirname(dst), obj_stream.getvalue())
+            self.logger.log(type="hint", content=f"File {srcname} transferred to Docker container at {dst}.") 
+        except Exception as e:
+            print(f"Failed to write file: {e}")
+            self.logger.log(type="error", content=f"Failed to write the file: {e}")                          
     def cleanup_container(self) -> None:
         if self.container:
             try:
@@ -42,8 +61,7 @@ class DockerContainerManager:
                 self.logger.log(type="info", content=f"Stopped and removed the container: {self.container.id}")
             except Exception as e:
                 print(f"Failed to stop and remove the container: {e}")
-                self.logger.log(type="error", content=f"Failed to stop and remove the container: {e}")
-                
+                self.logger.log(type="error", content=f"Failed to stop and remove the container: {e}")    
 
     def start_container(self) -> None:
         if not self.client: self.client = self.init_docker()
