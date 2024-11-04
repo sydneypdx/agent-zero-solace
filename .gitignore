@@ -3,6 +3,9 @@
 **/__pycache__/
 **/.conda/
 
+# Ignore initialize.py (use dist and copy it)
+initialize.py
+
 # Ignore git (for bundler)
 .git/
 
