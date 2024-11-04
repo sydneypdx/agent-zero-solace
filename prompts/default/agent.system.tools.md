@@ -11,3 +11,5 @@
 {{ include './agent.system.tool.code_exe.md' }}
 
 {{ include './agent.system.tool.web.md' }}
+
+{{ include './agent.system.tool.file_writer.md' }}
